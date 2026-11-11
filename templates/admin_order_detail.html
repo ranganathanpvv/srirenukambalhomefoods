@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ order.order_number }} | Admin{% endblock %}
+{% block content %}
+<section class="admin-page">
+  <a href="{{ url_for('admin_dashboard') }}">← Back to orders</a>
+  <p class="eyebrow">ORDER DETAILS</p><h1>{{ order.order_number }}</h1>
+  <div class="detail-grid">
+    <div class="detail-card"><h3>Customer</h3><p><strong>{{ order.customer_name }}</strong><br>{{ order.phone }}<br>{{ order.address }}</p>{% if order.notes %}<p><strong>Customer notes:</strong> {{ order.notes }}</p>{% endif %}</div>
+    <div class="detail-card"><h3>Order summary</h3>{% for i in order.items %}<p>{{ i.product_name }} – {{ i.variant }} × {{ i.quantity }}{% if i.unit_price is not none %} (₹{{ '%.2f'|format(i.unit_price) }}){% endif %}</p>{% endfor %}<hr><strong>Total: {% if order.total is not none %}₹{{ '%.2f'|format(order.total) }}{% else %}To be confirmed{% endif %}</strong></div>
+  </div>
+  <form class="detail-card update-form" method="post" action="{{ url_for('admin_order_update', order_id=order.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h3>Update order</h3>
+    <label>Status<select name="status">{% for s in ['New','Confirmed','Preparing','Ready','Dispatched','Delivered','Cancelled'] %}<option value="{{ s }}" {% if order.status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+    <label>Tentative delivery date<input type="date" name="delivery_date" value="{{ order.tentative_delivery_date or '' }}"></label>
+    <label>Admin remarks<textarea name="remarks" rows="3">{{ order.admin_remarks or '' }}</textarea></label>
+    <button class="button button-dark">Save changes</button>
+  </form>
+</section>
+{% endblock %}

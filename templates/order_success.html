@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Order recorded | Renukambal Home Foods{% endblock %}
+{% block content %}
+<section class="success-card">
+  <div class="success-icon">✓</div>
+  <p class="eyebrow">ORDER RECORDED</p>
+  <h1>Thank you, {{ order.customer_name }}!</h1>
+  <p>Your order request has been saved.</p>
+  <div class="order-number">{{ order.order_number }}</div>
+  <p>We will review availability and confirm your tentative delivery date through WhatsApp or phone.</p>
+  <a class="button button-dark" href="{{ url_for('home') }}">Back to home</a>
+</section>
+{% endblock %}

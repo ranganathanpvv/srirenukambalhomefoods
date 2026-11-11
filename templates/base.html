@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sri Renukambal Home Foods{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('home') }}">
+      <span class="brand-mark">R</span>
+      <span><strong>Sri Renukambal</strong><small>HOME FOODS</small></span>
+    </a>
+    <nav><a href="{{ url_for('home') }}#products">Our Products</a><a href="{{ url_for('home') }}#about">Our Story</a><a
+        href="{{ url_for('admin_login') }}">Admin</a></nav>
+    <a class="cart-link" href="#cart" aria-label="Shopping cart">
+      <span class="cart-icon" aria-hidden="true">🛒</span>
+      <span class="cart-label">Cart</span>
+      <span id="cart-count" class="cart-count" aria-live="polite">0</span>
+    </a>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer class="footer">
+    <strong>Sri Renukambal Home Foods</strong>
+    <p>Traditional homemade flavours, prepared with care.</p>
+    <small>Orders are confirmed after availability and delivery details are checked.</small>
+  </footer>
+  <script src="{{ url_for('static', filename='js/store.js') }}" defer></script>
+</body>
+
+</html>

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Orders dashboard | Renukambal Home Foods{% endblock %}
+{% block content %}
+<section class="admin-page">
+  <div class="admin-heading"><div><p class="eyebrow">ORDER MANAGEMENT</p><h1>Orders dashboard</h1></div>
+  <form method="post" action="{{ url_for('admin_logout') }}"><button class="button button-outline">Log out</button></form></div>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<p class="alert {{ category }}">{{ message }}</p>{% endfor %}{% endwith %}
+  <form class="filters" method="get">
+    <input name="q" value="{{ search }}" placeholder="Search order, customer or phone">
+    <select name="status"><option value="">All statuses</option>{% for s in ['New','Confirmed','Preparing','Ready','Dispatched','Delivered','Cancelled'] %}<option value="{{ s }}" {% if selected_status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    <button class="button button-dark">Search</button>
+  </form>
+  <div class="table-wrap"><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Phone</th><th>Items</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
+  {% for o in orders %}<tr><td><strong>{{ o.order_number }}</strong></td><td>{{ o.created_at[:16].replace('T',' ') }}</td><td>{{ o.customer_name }}</td><td>{{ o.phone }}</td><td>{{ o.items|length }}</td><td>{% if o.total is not none %}₹{{ '%.2f'|format(o.total) }}{% else %}TBC{% endif %}</td><td><span class="status">{{ o.status }}</span></td><td><a href="{{ url_for('admin_order_detail', order_id=o.id) }}">View</a></td></tr>
+  {% else %}<tr><td colspan="8" class="empty">No orders found.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

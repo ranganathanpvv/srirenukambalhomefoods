@@ -121,3 +121,8 @@ def update_order(order_id, status, delivery_date, remarks):
             WHERE id=?""",
             (status, delivery_date, remarks, now, order_id)
         )
+
+def delete_order(order_id):
+    with get_db() as conn:
+        cur = conn.execute("DELETE FROM orders WHERE id=?", (order_id,))
+        return cur.rowcount > 0

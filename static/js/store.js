@@ -47,6 +47,7 @@ function getEffectivePrice(product, variantName, qty, selectedAttrs = {}) {
     const chosenVal = selectedAttrs[attr.key];
     const options = Array.isArray(attr.options) ? attr.options : [];
     const optObj = options.find((o) => o.value === chosenVal) || options[0];
+
     if (optObj) {
       if (optObj.price_delta === null || optObj.price_delta === undefined) {
         deltaUnpriced = true;
@@ -61,6 +62,7 @@ function getEffectivePrice(product, variantName, qty, selectedAttrs = {}) {
   }
 
   const perItemOrBundle = Number((Number(basePrice) + deltaSum).toFixed(2));
+
   if (applied500Bundle) {
     return {
       lineTotal: perItemOrBundle,
@@ -89,6 +91,7 @@ function computeUnitAndSubtotal(product, variantName, selectedAttrs, qty) {
 function updateHeaderCart(cart = loadCart()) {
   const countEl = document.getElementById("cart-count");
   const totalQty = cart.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+
   if (countEl) countEl.textContent = String(totalQty);
 
   const cartLink = document.querySelector(".cart-link");
@@ -98,6 +101,7 @@ function updateHeaderCart(cart = loadCart()) {
 
   const feedbackBar = document.getElementById("cart-feedback-bar");
   const orderBtn = document.getElementById("place-order-cta");
+
   if (orderBtn) {
     orderBtn.textContent = "Order";
     orderBtn.setAttribute("href", "/cart");
@@ -139,9 +143,10 @@ async function loadProducts() {
   try {
     const response = await fetch("/api/products");
     if (!response.ok) throw new Error("Failed to load products");
-    products = await response.json();
 
+    products = await response.json();
     grid.innerHTML = "";
+
     products.forEach((p) => {
       const minQty = Math.max(1, Number(p.min_qty) || 1);
       const variants = Array.isArray(p.variants) ? p.variants : [];
@@ -163,6 +168,7 @@ async function loadProducts() {
               return `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.value)}${escapeHtml(deltaSuffix)}</option>`;
             })
             .join("");
+
           return `
             <label class="variant-label">
               ${escapeHtml(attr.label)}
@@ -179,7 +185,6 @@ async function loadProducts() {
       const card = document.createElement("article");
       card.className = "product-card";
       card.dataset.productId = p.id;
-
       card.innerHTML = `
         <div class="product-image">
           <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy">
@@ -196,7 +201,11 @@ async function loadProducts() {
           ${attrFieldsHtml}
           <label class="variant-label">
             Quantity (min ${minQty})
-            <input type="number" class="qty-input" min="${minQty}" max="50" value="${minQty}">
+            <div class="quantity product-qty-control" style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+              <button type="button" class="qty-minus" aria-label="Decrease quantity" style="padding:8px 14px; font-size:18px; cursor:pointer;">−</button>
+              <input type="number" class="qty-input" min="${minQty}" max="50" value="${minQty}" inputmode="numeric" style="text-align:center; width:64px;">
+              <button type="button" class="qty-plus" aria-label="Increase quantity" style="padding:8px 14px; font-size:18px; cursor:pointer;">+</button>
+            </div>
           </label>
           <div class="product-subtotal-row">
             <span>Subtotal (base delivery incl.)</span>
@@ -209,6 +218,8 @@ async function loadProducts() {
 
       const variantSelect = card.querySelector(".variant-select");
       const qtyInput = card.querySelector(".qty-input");
+      const minusBtn = card.querySelector(".qty-minus");
+      const plusBtn = card.querySelector(".qty-plus");
       const subtotalEl = card.querySelector(".line-subtotal");
       const addBtn = card.querySelector(".add-to-cart-btn");
       const addedStatusEl = card.querySelector(".added-status");
@@ -230,13 +241,34 @@ async function loadProducts() {
           qty = 50;
           qtyInput.value = "50";
         }
-        const { subtotal } = computeUnitAndSubtotal(p, variantSelect.value, readSelectedAttributes(), qty);
+
+        const { subtotal } = computeUnitAndSubtotal(
+          p,
+          variantSelect.value,
+          readSelectedAttributes(),
+          qty
+        );
         subtotalEl.textContent = subtotal == null ? "To be confirmed" : money(subtotal);
       }
+
+      minusBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        const current = parseInt(qtyInput.value, 10) || minQty;
+        qtyInput.value = String(Math.max(minQty, current - 1));
+        refreshSubtotal();
+      });
+
+      plusBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        const current = parseInt(qtyInput.value, 10) || minQty;
+        qtyInput.value = String(Math.min(50, current + 1));
+        refreshSubtotal();
+      });
 
       variantSelect.addEventListener("change", refreshSubtotal);
       qtyInput.addEventListener("input", refreshSubtotal);
       qtyInput.addEventListener("change", refreshSubtotal);
+
       card.querySelectorAll(".attr-select").forEach((sel) => {
         sel.addEventListener("change", refreshSubtotal);
       });
@@ -251,11 +283,14 @@ async function loadProducts() {
         const { unitPrice } = computeUnitAndSubtotal(p, packVariant, selectedAttrs, qty);
 
         const attrValues = Object.values(selectedAttrs).filter(Boolean);
-        const fullVariantLabel = attrValues.length ? `${packVariant} (${attrValues.join(", ")})` : packVariant;
-        const lineKey = `${p.id}::${fullVariantLabel}`;
+        const fullVariantLabel = attrValues.length
+          ? `${packVariant} (${attrValues.join(", ")})`
+          : packVariant;
 
+        const lineKey = `${p.id}::${fullVariantLabel}`;
         const cart = loadCart();
         const existing = cart.find((item) => item.lineKey === lineKey);
+
         if (existing) {
           existing.quantity = Math.min(50, (Number(existing.quantity) || 0) + qty);
           existing.unit_price = unitPrice;
@@ -279,6 +314,7 @@ async function loadProducts() {
 
         card.classList.add("is-added", "cart-highlighted");
         addBtn.classList.add("is-added");
+
         if (addedStatusEl) {
           addedStatusEl.hidden = false;
           addedStatusEl.textContent = `Added to cart ✓ (${fullVariantLabel} × ${qty})`;
@@ -291,7 +327,7 @@ async function loadProducts() {
       grid.appendChild(card);
     });
   } catch {
-    grid.innerHTML = '<p class="muted">Could not load products. Please refresh the page.</p>';
+    grid.innerHTML = "Could not load products. Please refresh the page.";
   }
 }
 
@@ -299,13 +335,16 @@ function changeQty(index, delta) {
   const cart = loadCart();
   const item = cart[index];
   if (!item) return;
+
   const minQty = Math.max(1, Number(item.min_qty) || 1);
   const nextQty = (Number(item.quantity) || minQty) + delta;
+
   if (nextQty < minQty) {
     cart.splice(index, 1);
   } else {
     item.quantity = Math.min(50, nextQty);
   }
+
   saveCart(cart);
   renderCart();
 }
@@ -319,6 +358,7 @@ function renderCart() {
   const holder = document.getElementById("cart-items");
   const cart = loadCart();
   updateHeaderCart(cart);
+
   if (!holder) return;
 
   const totalEl = document.getElementById("cart-total");
@@ -331,7 +371,7 @@ function renderCart() {
   }
 
   if (!cart.length) {
-    holder.innerHTML = '<p class="muted">Your cart is empty. <a href="/#products">Browse products</a> to add items.</p>';
+    holder.innerHTML = "Your cart is empty. Browse products to add items.";
     if (totalEl) totalEl.textContent = "To be confirmed";
     if (submitBtn) submitBtn.disabled = true;
     return;
@@ -410,8 +450,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
     const currentCart = loadCart();
     const message = document.getElementById("checkout-message");
+
     if (!currentCart.length) {
       if (message) message.textContent = "Please add at least one product to your cart.";
       return;
@@ -444,10 +486,12 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || "Could not save your order.");
       }
+
       saveCart([]);
       updateHeaderCart([]);
       sessionStorage.setItem("lastOrderNumber", result.order_number);

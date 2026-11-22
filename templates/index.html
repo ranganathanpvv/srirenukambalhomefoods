@@ -4,8 +4,9 @@
 <section class="hero">
   <div class="hero-copy">
     <p class="eyebrow">HOMEMADE • TRADITIONAL • MADE WITH CARE</p>
-    <h1>A little taste of <em>home.</em></h1>
-    <p>Traditional spice powders, podis and pickles made in small batches for your family.</p><p class="heritage-note">Prepared in a traditional Brahmin vegetarian household, following time-honoured vegetarian home-cooking practices.</p>
+    <h1>The traditional taste of <em>home.</em></h1>
+    <p>Traditional spice powders, podis and pickles made in small batches for your family.</p>
+    <p class="heritage-note">Prepared in a traditional Brahmin vegetarian household, following time-honoured vegetarian home-cooking practices.</p>
     <a class="button button-dark" href="#products">Explore our products</a>
   </div>
   <div class="hero-art">
@@ -21,26 +22,32 @@
 </section>
 
 <section class="products-section" id="products">
-  <div class="section-heading"><div><p class="eyebrow">OUR COLLECTION</p><h2>Made for your kitchen</h2></div><p>Choose your favourites and add them to your cart.</p></div>
-  <div id="product-grid" class="product-grid"><div class="loading">Loading products…</div></div>
-</section>
-
-<section class="order-area" id="cart">
-  <div class="cart-panel">
-    <p class="eyebrow">YOUR SELECTION</p><h2>Your cart</h2>
-    <div id="cart-items"><p class="muted">Your cart is empty.</p></div>
-    <div class="cart-total"><span>Estimated total</span><strong id="cart-total">To be confirmed</strong></div>
-    <p class="fine-print">Final price, availability and delivery charges will be confirmed by us on WhatsApp.</p>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">OUR COLLECTION</p>
+      <h2>Made for your kitchen</h2>
+    </div>
+    <p>Select pack size, options, and quantity, then add to your cart.</p>
   </div>
-  <form id="checkout-form" class="checkout-panel">
-    <p class="eyebrow">DELIVERY DETAILS</p><h2>Where should we deliver?</h2>
-    <label>Your name<input name="name" required maxlength="100" placeholder="Full name"></label>
-    <label>Mobile number<input name="phone" required maxlength="20" placeholder="e.g. +91 98765 43210"></label>
-    <label>Delivery address<textarea name="address" required minlength="8" maxlength="1000" rows="3" placeholder="Door number, street, area, city, PIN code"></textarea></label>
-    <label>Additional notes <span class="muted">(optional)</span><textarea name="notes" maxlength="500" rows="2" placeholder="Landmark or delivery instructions"></textarea></label>
-    <button class="button button-green full" type="submit">Save order & continue to WhatsApp</button>
-    <p id="checkout-message" class="form-message" role="status"></p>
-    <small class="fine-print">Your order is first recorded in our order system. WhatsApp will then open with a pre-filled message. Please press Send in WhatsApp to notify us.</small>
-  </form>
+
+  <!-- Highlighted dynamically when a product is added to cart; does not auto-scroll/jump -->
+  <div id="cart-feedback-bar" class="cart-feedback-bar" hidden aria-live="polite">
+    <span id="cart-added-highlight" class="cart-added-highlight"></span>
+    <a id="place-order-cta" class="button button-green" href="{{ url_for('cart_summary') }}">Place Order</a>
+  </div>
+
+  <div id="product-grid" class="product-grid">
+    <div class="loading">Loading products…</div>
+  </div>
+
+  <div class="order-clauses">
+    <h3>Important Order Clauses</h3>
+    <ul>
+      {% for clause in order_clauses %}
+      <li>{{ clause }}</li>
+      {% endfor %}
+    </ul>
+  </div>
 </section>
 {% endblock %}
+```[cite: 6]

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Cart & Order Summary | Sri Renukambal Home Foods{% endblock %}
+{% block content %}
+<section class="cart-summary-page">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">CART &amp; ORDER SUMMARY</p>
+      <h1>Your order summary</h1>
+    </div>
+    <div class="summary-header-actions">
+      <button type="button" id="clear-cart-btn" class="button button-outline">Clear cart</button>
+      <a class="button button-outline" href="{{ url_for('home') }}#products">← Add more items</a>
+    </div>
+  </div>
+
+  <div id="cart-summary-container">
+    <div id="cart-items">
+      <p class="muted">Loading your cart...</p>
+    </div>
+
+    <div class="cart-summary-footer">
+      <div class="cart-total">
+        <span>Estimated items total (base delivery incl.)</span>
+        <strong id="cart-total">To be confirmed</strong>
+      </div>
+      <ul class="clause-list">
+        {% for clause in order_clauses %}
+        <li>{{ clause }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <form id="checkout-form" class="checkout-panel">
+      <p class="eyebrow">DELIVERY DETAILS</p>
+      <h2>Where should we deliver?</h2>
+      <label>Your name<input name="name" required maxlength="100" placeholder="Full name"></label>
+      <label>Mobile number<input name="phone" required maxlength="20" placeholder="e.g. +91 98765 43210"></label>
+      <label>Delivery address<textarea name="address" required minlength="8" maxlength="1000" rows="3" placeholder="Door number, street, area, city, PIN code"></textarea></label>
+      <label>Additional notes <span class="muted">(optional)</span><textarea name="notes" maxlength="500" rows="2" placeholder="Landmark or delivery instructions"></textarea></label>
+      <button class="button button-green full" type="submit">Save order &amp; continue to WhatsApp</button>
+      <p id="checkout-message" class="form-message" role="status"></p>
+      <small class="fine-print">Your order is first recorded in our order system. WhatsApp will then open with a pre-filled message. Please press Send in WhatsApp to notify us.</small>
+    </form>
+  </div>
+</section>
+{% endblock %}

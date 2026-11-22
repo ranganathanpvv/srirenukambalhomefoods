@@ -110,10 +110,10 @@ PRODUCTS = [
     {
         "id": "karuvepilai-powder",
         "name": "Karuvepilai Powder",
-        "description": "Traditional shikakai powder for hair care. Base delivery included.",
+        "description": "Homemade karuvepilai podi, prepared on request. Base delivery included.",
         "card_note": "2 × 250g gets 500g pack price · ~14% off 1kg",
         "category": "Personal Care",
-        "image": "/static/images/shikakai-powder.jpg",
+        "image": "/static/images/karuvepilai-podi.jpg",
         "min_qty": 1,
         "variants": [
             {"name": "250g", "price": 187},

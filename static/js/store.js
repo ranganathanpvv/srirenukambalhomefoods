@@ -202,9 +202,9 @@ async function loadProducts() {
           <label class="variant-label">
             Quantity (min ${minQty})
             <div class="quantity product-qty-control" style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-              <button type="button" class="qty-minus" aria-label="Decrease quantity" style="padding:8px 14px; font-size:18px; cursor:pointer;">−</button>
-              <input type="number" class="qty-input" min="${minQty}" max="50" value="${minQty}" inputmode="numeric" style="text-align:center; width:64px;">
-              <button type="button" class="qty-plus" aria-label="Increase quantity" style="padding:8px 14px; font-size:18px; cursor:pointer;">+</button>
+              <button type="button" class="qty-minus" aria-label="Decrease quantity" style="padding:4px 8px; font-size:18px; cursor:pointer;">−</button>
+              <input type="number" class="qty-input" min="${minQty}" max="50" value="${minQty}" inputmode="numeric" style="text-align:center;">
+              <button type="button" class="qty-plus" aria-label="Increase quantity" style="padding:4px 8px; font-size:18px; cursor:pointer;">+</button>
             </div>
           </label>
           <div class="product-subtotal-row">

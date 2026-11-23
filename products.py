@@ -33,9 +33,9 @@ PRODUCTS = [
         ],
     },
     {
-        "id": "sambar-powder",
-        "name": "Sambar Powder",
-        "description": "Traditional homemade sambar powder. Base delivery included.",
+        "id": "sambar-podi",
+        "name": "Sambar Podi",
+        "description": "Traditional homemade sambar podi. Base delivery included.",
         "card_note": "2 × 250g gets 500g pack price · ~14% off 1kg",
         "category": "Spice Powders",
         "image": "/static/images/sambar-powder.jpg",
@@ -48,9 +48,9 @@ PRODUCTS = [
         "attributes": [],
     },
     {
-        "id": "rasam-powder",
-        "name": "Rasam Powder",
-        "description": "Aromatic homemade rasam powder. Base delivery included.",
+        "id": "rasam-podi",
+        "name": "Rasam podi",
+        "description": "Aromatic homemade rasam podi. Base delivery included.",
         "card_note": "2 × 250g gets 500g pack price · ~14% off 1kg",
         "category": "Spice Powders",
         "image": "/static/images/rasam-powder.jpg",
@@ -75,7 +75,16 @@ PRODUCTS = [
             {"name": "500g", "price": 407},
             {"name": "1kg", "price": 727},
         ],
-        "attributes": [],
+        "attributes": [
+            {
+                "key": "garlic",
+                "label": "Garlic preference",
+                "options": [
+                    {"value": "With Garlic", "price_delta": 0.0},
+                    {"value": "Without Garlic", "price_delta": 0.0},
+                ],
+            }
+        ],
     },
     {
         "id": "lemon-pickle",
@@ -93,8 +102,8 @@ PRODUCTS = [
         "attributes": [],
     },
     {
-        "id": "shikakai-powder",
-        "name": "Shikakai Powder",
+        "id": "shikakai-podi",
+        "name": "Shikakai Podi",
         "description": "Traditional shikakai powder for hair care. Base delivery included.",
         "card_note": "2 × 250g gets 500g pack price · ~14% off 1kg",
         "category": "Personal Care",
@@ -108,8 +117,8 @@ PRODUCTS = [
         "attributes": [],
     },
     {
-        "id": "karuvepilai-powder",
-        "name": "Karuvepilai Powder",
+        "id": "karuvepilai-podi",
+        "name": "Karuvepilai Podi",
         "description": "Homemade karuvepilai podi, prepared on request. Base delivery included.",
         "card_note": "2 × 250g gets 500g pack price · ~14% off 1kg",
         "category": "Personal Care",

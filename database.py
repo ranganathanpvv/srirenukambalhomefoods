@@ -1,6 +1,12 @@
-import json
 import os
+from dotenv import load_dotenv
+
+import certifi
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+
 import sqlite3
+import libsql
 from pathlib import Path
 from contextlib import contextmanager
 from datetime import datetime
@@ -9,11 +15,78 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("DATABASE_PATH", BASE_DIR / "data" / "renukambal.db"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+TURSO_URL = os.environ.get("TURSO_DATABASE_URL")
+TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
+
+
+class DictCursor:
+    """Wraps libsql cursor so fetchone() and fetchall() return dicts just like sqlite3.Row."""
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    @property
+    def lastrowid(self):
+        return self._cursor.lastrowid
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+    def _to_dict(self, row):
+        if row is None or isinstance(row, dict):
+            return row
+        cols = [d[0] for d in self._cursor.description]
+        return dict(zip(cols, row))
+
+    def fetchone(self):
+        return self._to_dict(self._cursor.fetchone())
+
+    def fetchall(self):
+        return [self._to_dict(r) for r in self._cursor.fetchall()]
+
+
+class LibsqlWrapper:
+    """Makes libsql connection behave identically to your existing sqlite3 setup."""
+    def __init__(self, conn, is_turso=False):
+        self._conn = conn
+        self._is_turso = is_turso
+
+    def execute(self, sql, params=()):
+        return DictCursor(self._conn.execute(sql, params))
+
+    def executemany(self, sql, seq_of_params):
+        return DictCursor(self._conn.executemany(sql, seq_of_params))
+
+    def executescript(self, script):
+        return self._conn.executescript(script)
+
+    def commit(self):
+        self._conn.commit()
+        if self._is_turso:
+            self._conn.sync()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
+
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    if TURSO_URL and TURSO_TOKEN:
+        raw_conn = libsql.connect(
+            str(DB_PATH),
+            sync_url=TURSO_URL,
+            auth_token=TURSO_TOKEN
+        )
+        raw_conn.sync()
+        conn = LibsqlWrapper(raw_conn, is_turso=True)
+    else:
+        raw_conn = sqlite3.connect(DB_PATH)
+        raw_conn.row_factory = sqlite3.Row
+        conn = LibsqlWrapper(raw_conn, is_turso=False)
+
     conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
@@ -121,6 +194,7 @@ def update_order(order_id, status, delivery_date, remarks):
             WHERE id=?""",
             (status, delivery_date, remarks, now, order_id)
         )
+
 
 def delete_order(order_id):
     with get_db() as conn:

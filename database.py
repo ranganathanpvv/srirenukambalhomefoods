@@ -1,101 +1,164 @@
 import os
-from dotenv import load_dotenv
-
-import certifi
-os.environ.setdefault("SSL_CERT_FILE", certifi.where())
-os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
-
 import sqlite3
-import libsql
+import requests
+from dotenv import load_dotenv
 from pathlib import Path
 from contextlib import contextmanager
 from datetime import datetime
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("DATABASE_PATH", BASE_DIR / "data" / "renukambal.db"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-TURSO_URL = os.environ.get("TURSO_DATABASE_URL")
-TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
+TURSO_URL = os.environ.get("TURSO_DATABASE_URL", "").strip()
+TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
 
 
-class DictCursor:
-    """Wraps libsql cursor so fetchone() and fetchall() return dicts just like sqlite3.Row."""
-    def __init__(self, cursor):
-        self._cursor = cursor
+def _turso_http_url():
+    # Convert libsql://... to https://.../v2/pipeline
+    url = TURSO_URL.replace("libsql://", "https://").rstrip("/")
+    return f"{url}/v2/pipeline"
 
-    @property
-    def lastrowid(self):
-        return self._cursor.lastrowid
 
-    @property
-    def rowcount(self):
-        return self._cursor.rowcount
+def _encode_arg(val):
+    if val is None:
+        return {"type": "null"}
+    if isinstance(val, bool):
+        return {"type": "integer", "value": "1" if val else "0"}
+    if isinstance(val, int):
+        return {"type": "integer", "value": str(val)}
+    if isinstance(val, float):
+        return {"type": "float", "value": val}
+    return {"type": "text", "value": str(val)}
 
-    def _to_dict(self, row):
-        if row is None or isinstance(row, dict):
-            return row
-        cols = [d[0] for d in self._cursor.description]
-        return dict(zip(cols, row))
+
+def _decode_cell(cell):
+    ctype = cell.get("type")
+    if ctype == "null":
+        return None
+    val = cell.get("value")
+    if ctype == "integer":
+        return int(val)
+    if ctype == "float":
+        return float(val)
+    return val
+
+
+class TursoCursor:
+    def __init__(self, rows, lastrowid=None, rowcount=0):
+        self._rows = rows
+        self.lastrowid = lastrowid
+        self.rowcount = rowcount
 
     def fetchone(self):
-        return self._to_dict(self._cursor.fetchone())
+        return self._rows[0] if self._rows else None
 
     def fetchall(self):
-        return [self._to_dict(r) for r in self._cursor.fetchall()]
+        return self._rows
 
 
-class LibsqlWrapper:
-    """Makes libsql connection behave identically to your existing sqlite3 setup."""
-    def __init__(self, conn, is_turso=False):
-        self._conn = conn
-        self._is_turso = is_turso
+class TursoHttpConnection:
+    """Fast, thread-safe Turso HTTP client that never hangs Gunicorn workers."""
+    def __init__(self):
+        self._endpoint = _turso_http_url()
+        self._headers = {
+            "Authorization": f"Bearer {TURSO_TOKEN}",
+            "Content-Type": "application/json",
+        }
+        self._session = requests.Session()
+
+    def _run_pipeline(self, stmts):
+        requests_payload = [
+            {"type": "execute", "stmt": stmt} for stmt in stmts
+        ]
+        requests_payload.append({"type": "close"})
+
+        resp = self._session.post(
+            self._endpoint,
+            headers=self._headers,
+            json={"requests": requests_payload},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        cursors = []
+        for item in data.get("results", []):
+            if item.get("type") == "error":
+                raise RuntimeError(item.get("error", {}).get("message", "Turso SQL error"))
+            res = item.get("response", {}).get("result")
+            if not res:
+                continue
+            cols = [c["name"] for c in res.get("cols", [])]
+            parsed_rows = []
+            for raw_row in res.get("rows", []):
+                decoded = [_decode_cell(c) for c in raw_row]
+                parsed_rows.append(dict(zip(cols, decoded)))
+            last_id = res.get("last_insert_rowid")
+            cursors.append(
+                TursoCursor(
+                    rows=parsed_rows,
+                    lastrowid=int(last_id) if last_id is not None else None,
+                    rowcount=res.get("affected_row_count", 0),
+                )
+            )
+        return cursors
 
     def execute(self, sql, params=()):
-        return DictCursor(self._conn.execute(sql, params))
+        stmt = {"sql": sql}
+        if params:
+            stmt["args"] = [_encode_arg(p) for p in params]
+        cursors = self._run_pipeline([stmt])
+        return cursors[0] if cursors else TursoCursor([])
 
     def executemany(self, sql, seq_of_params):
-        return DictCursor(self._conn.executemany(sql, seq_of_params))
+        stmts = [
+            {"sql": sql, "args": [_encode_arg(p) for p in params]}
+            for params in seq_of_params
+        ]
+        if not stmts:
+            return TursoCursor([])
+        cursors = self._run_pipeline(stmts)
+        return cursors[-1] if cursors else TursoCursor([])
 
     def executescript(self, script):
-        return self._conn.executescript(script)
+        statements = [s.strip() for s in script.split(";") if s.strip()]
+        stmts = [{"sql": s} for s in statements]
+        if stmts:
+            self._run_pipeline(stmts)
 
     def commit(self):
-        self._conn.commit()
-        if self._is_turso:
-            self._conn.sync()
+        pass
 
     def rollback(self):
-        self._conn.rollback()
+        pass
 
     def close(self):
-        self._conn.close()
+        self._session.close()
 
 
 @contextmanager
 def get_db():
     if TURSO_URL and TURSO_TOKEN:
-        raw_conn = libsql.connect(
-            str(DB_PATH),
-            sync_url=TURSO_URL,
-            auth_token=TURSO_TOKEN
-        )
-        raw_conn.sync()
-        conn = LibsqlWrapper(raw_conn, is_turso=True)
+        conn = TursoHttpConnection()
+        try:
+            yield conn
+        finally:
+            conn.close()
     else:
-        raw_conn = sqlite3.connect(DB_PATH)
-        raw_conn.row_factory = sqlite3.Row
-        conn = LibsqlWrapper(raw_conn, is_turso=False)
-
-    conn.execute("PRAGMA foreign_keys = ON")
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
 
 def init_db():
@@ -177,13 +240,24 @@ def list_orders(status="", search=""):
         sql += " AND (order_number LIKE ? OR customer_name LIKE ? OR phone LIKE ?)"
         params.extend([term, term, term])
     sql += " ORDER BY id DESC LIMIT 300"
+
     with get_db() as conn:
         rows = conn.execute(sql, params).fetchall()
-        output = []
-        for row in rows:
-            items = conn.execute("SELECT * FROM order_items WHERE order_id=? ORDER BY id", (row["id"],)).fetchall()
-            output.append(_order_dict(row, items))
-        return output
+        if not rows:
+            return []
+
+        order_ids = [r["id"] for r in rows]
+        placeholders = ",".join("?" for _ in order_ids)
+        all_items = conn.execute(
+            f"SELECT * FROM order_items WHERE order_id IN ({placeholders}) ORDER BY id",
+            order_ids
+        ).fetchall()
+
+        items_by_order = {}
+        for item in all_items:
+            items_by_order.setdefault(item["order_id"], []).append(item)
+
+        return [_order_dict(row, items_by_order.get(row["id"], [])) for row in rows]
 
 
 def update_order(order_id, status, delivery_date, remarks):

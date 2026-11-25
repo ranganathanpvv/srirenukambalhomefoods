@@ -10,13 +10,22 @@
 
 <body>
   <header class="site-header">
+    <button type="button" class="menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu"
+      aria-expanded="false" aria-controls="primary-nav">
+      <span class="menu-icon" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+      <span class="menu-label"></span>
+    </button>
     <a class="brand" href="{{ url_for('home') }}">
       <span class="brand-mark">R</span>
       <span><strong>Sri Renukambal</strong><small>HOME FOODS</small></span>
     </a>
-    <nav>
+    <nav id="primary-nav" class="site-nav">
       <a href="{{ url_for('home') }}#products">Our Products</a>
-      <a href="{{ url_for('home') }}#categories">Categories</a>
+      <a href="{{ url_for('home') }}#products">Categories</a>
       <a href="{{ url_for('home') }}#about">Our Story</a>
       <a href="{{ url_for('admin_login') }}">Admin</a>
     </nav>

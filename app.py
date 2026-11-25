@@ -95,7 +95,8 @@ def api_create_order():
     if not isinstance(items, list) or not items or len(items) > 30:
         return jsonify(error="Your cart is empty or contains too many items."), 400
 
-    catalog = {p["id"]: p for p in PRODUCTS}
+    live_products = get_products()
+    catalog = {p["id"]: p for p in live_products}
     clean_items = []
     total = 0.0
     has_unpriced = False

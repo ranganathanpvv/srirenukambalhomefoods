@@ -1,3 +1,4 @@
+
 import json
 import os
 import re
@@ -11,7 +12,15 @@ from pathlib import Path
 from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from database import init_db, create_order, get_order, list_orders, update_order, delete_order
-from products import PRODUCTS, ORDER_CLAUSES, get_products, get_all_products_admin, upsert_product_admin, set_product_active_admin
+from products import (
+    PRODUCTS,
+    ORDER_CLAUSES,
+    get_products,
+    get_all_products_admin,
+    insert_product_admin,
+    update_product_admin,
+    set_product_active_admin,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -340,7 +349,7 @@ def admin_product_save():
     if request.form.get("csrf_token") != session.get("csrf_token"):
         return "Invalid request token", 400
 
-    # Read product ID (if editing, prefer hidden field if set)
+    is_edit = request.form.get("is_edit") == "1"
     pid = (request.form.get("id") or "").strip().lower()
     name = (request.form.get("name") or "").strip()
     category = (request.form.get("category") or "").strip()
@@ -366,7 +375,7 @@ def admin_product_save():
 
     if not name or not category:
         flash("Product name and category are required.", "error")
-        return redirect(url_for("admin_products"))
+        return redirect(url_for("admin_products", edit=pid if is_edit else None))
 
     if min_qty < 1 or min_qty > 50:
         min_qty = 1
@@ -389,7 +398,7 @@ def admin_product_save():
             raise ValueError("At least one valid variant name is required.")
     except Exception as exc:
         flash(f"Invalid variants JSON: {exc}", "error")
-        return redirect(url_for("admin_products", edit=pid))
+        return redirect(url_for("admin_products", edit=pid if is_edit else None))
 
     try:
         parsed_attrs = json.loads(attrs_raw or "[]")
@@ -397,16 +406,9 @@ def admin_product_save():
             raise ValueError("Attributes must be a JSON list.")
     except Exception as exc:
         flash(f"Invalid attributes JSON: {exc}", "error")
-        return redirect(url_for("admin_products", edit=pid))
+        return redirect(url_for("admin_products", edit=pid if is_edit else None))
 
-    print("[DEBUG] upsert payload:", {
-    "id": pid,
-    "name": name,
-    "category": category,
-    "is_active": is_active,
-    })
-    
-    upsert_product_admin({
+    payload = {
         "id": pid,
         "name": name,
         "category": category,
@@ -417,9 +419,17 @@ def admin_product_save():
         "is_active": is_active,
         "variants_json": json.dumps(clean_variants),
         "attributes_json": json.dumps(parsed_attrs),
-    })
-    flash(f"Saved product '{name}'.", "success")
+    }
+
+    if is_edit:
+        update_product_admin(payload)
+        flash(f"Updated product '{name}'.", "success")
+    else:
+        insert_product_admin(payload)
+        flash(f"Created product '{name}'.", "success")
+
     return redirect(url_for("admin_products"))
+
 
 @app.post("/admin/products/<product_id>/hide")
 @admin_required

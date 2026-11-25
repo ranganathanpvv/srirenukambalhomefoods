@@ -206,10 +206,15 @@ def _decode_val(cell: dict):
 def _query_db(sql: str, params: list | None = None) -> list[dict]:
     args = params or []
 
+    # if TURSO_URL and TURSO_TOKEN:
+    #     stmt = {"sql": sql}
+    #     if args:
+    #         stmt["positional_args"] = [_encode_arg(a) for a in args]
+    
     if TURSO_URL and TURSO_TOKEN:
         stmt = {"sql": sql}
         if args:
-            stmt["positional_args"] = [_encode_arg(a) for a in args]
+            stmt["args"] = [_encode_arg(a) for a in args]
 
         resp = requests.post(
             _turso_http_url(),
@@ -323,38 +328,60 @@ def get_all_products_admin() -> list[dict]:
     ]
 
 
-def upsert_product_admin(product_data: dict) -> None:
-    """Insert or update a product in the database."""
+def insert_product_admin(product_data: dict) -> None:
+    """Insert a new product row into the database."""
     _query_db(
         """
         INSERT INTO products (
-            id, name, category, description, card_note, image, min_qty,
-            is_active, sort_order, variants_json, attributes_json
+            id, name, description, card_note, category, image, min_qty,
+            variants_json, attributes_json, is_active, sort_order, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            category = excluded.category,
-            description = excluded.description,
-            card_note = excluded.card_note,
-            image = excluded.image,
-            min_qty = excluded.min_qty,
-            is_active = excluded.is_active,
-            variants_json = excluded.variants_json,
-            attributes_json = excluded.attributes_json
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """,
         [
-            product_data["id"],
-            product_data["name"],
-            product_data["category"],
-            product_data["description"],
-            product_data["card_note"],
-            product_data["image"],
-            product_data["min_qty"],
-            product_data["is_active"],
-            product_data.get("sort_order", 99),
-            product_data["variants_json"],
-            product_data["attributes_json"],
+            str(product_data["id"]),
+            str(product_data["name"]),
+            str(product_data.get("description") or ""),
+            str(product_data.get("card_note") or ""),
+            str(product_data["category"]),
+            str(product_data.get("image") or ""),
+            int(product_data.get("min_qty") or 1),
+            str(product_data.get("variants_json") or "[]"),
+            str(product_data.get("attributes_json") or "[]"),
+            1 if int(product_data.get("is_active", 1)) == 1 else 0,
+            int(product_data.get("sort_order") if product_data.get("sort_order") is not None else 99),
+        ],
+    )
+
+
+def update_product_admin(product_data: dict) -> None:
+    """Update an existing product row by id."""
+    _query_db(
+        """
+        UPDATE products
+        SET name = ?,
+            description = ?,
+            card_note = ?,
+            category = ?,
+            image = ?,
+            min_qty = ?,
+            variants_json = ?,
+            attributes_json = ?,
+            is_active = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        [
+            str(product_data["name"]),
+            str(product_data.get("description") or ""),
+            str(product_data.get("card_note") or ""),
+            str(product_data["category"]),
+            str(product_data.get("image") or ""),
+            int(product_data.get("min_qty") or 1),
+            str(product_data.get("variants_json") or "[]"),
+            str(product_data.get("attributes_json") or "[]"),
+            1 if int(product_data.get("is_active", 1)) == 1 else 0,
+            str(product_data["id"]),
         ],
     )
 
@@ -362,6 +389,6 @@ def upsert_product_admin(product_data: dict) -> None:
 def set_product_active_admin(product_id: str, is_active: int) -> None:
     """Soft-delete (is_active=0) or restore (is_active=1) a product."""
     _query_db(
-        "UPDATE products SET is_active = ? WHERE id = ?",
+        "UPDATE products SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         [1 if int(is_active) else 0, product_id],
     )

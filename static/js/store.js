@@ -136,6 +136,259 @@ function highlightCartAndShowOrderButton(addedLabel) {
   }
 }
 
+function renderProductGrid(itemsToRender) {
+  const grid = document.getElementById("product-grid");
+  if (!grid) return;
+
+  grid.innerHTML = "";
+
+  if (!itemsToRender.length) {
+    grid.innerHTML = "<p>No products found in this category.</p>";
+    return;
+  }
+
+  itemsToRender.forEach((p) => {
+    const minQty = Math.max(1, Number(p.min_qty) || 1);
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    const attributes = Array.isArray(p.attributes) ? p.attributes : [];
+
+    const variantOptionsHtml = variants
+      .map((v) => {
+        const priceLabel = v.price == null ? "Price on request" : money(v.price);
+        return `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)} · ${escapeHtml(priceLabel)}</option>`;
+      })
+      .join("");
+
+    const attrFieldsHtml = attributes
+      .map((attr) => {
+        const optsHtml = (attr.options || [])
+          .map((opt) => {
+            const delta = Number(opt.price_delta) || 0;
+            const deltaSuffix = delta > 0 ? ` (+${money(delta)})` : "";
+            return `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.value)}${escapeHtml(deltaSuffix)}</option>`;
+          })
+          .join("");
+
+        return `
+          <label class="variant-label">
+            ${escapeHtml(attr.label)}
+            <select class="attr-select" data-attr-key="${escapeHtml(attr.key)}">${optsHtml}</select>
+          </label>
+        `;
+      })
+      .join("");
+
+    const cardNoteHtml = p.card_note
+      ? `<div class="card-meta-note">${escapeHtml(p.card_note)}</div>`
+      : "";
+
+    const card = document.createElement("article");
+    card.className = "product-card";
+    card.dataset.productId = p.id;
+    card.innerHTML = `
+      <div class="product-image">
+        <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy">
+      </div>
+      <div class="product-info">
+        <span class="category">${escapeHtml(p.category)} · Min qty: ${minQty}</span>
+        <h3>${escapeHtml(p.name)}</h3>
+        <p>${escapeHtml(p.description)}</p>
+        ${cardNoteHtml}
+        <label class="variant-label">
+          Pack / variant
+          <select class="variant-select">${variantOptionsHtml}</select>
+        </label>
+        ${attrFieldsHtml}
+        <label class="variant-label">
+          Quantity (min ${minQty})
+          <div class="quantity product-qty-control" style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+            <button type="button" class="qty-minus" aria-label="Decrease quantity" style="padding:4px 8px; font-size:18px; cursor:pointer;">−</button>
+            <input type="number" class="qty-input" min="${minQty}" max="50" value="${minQty}" inputmode="numeric" style="text-align:center;">
+            <button type="button" class="qty-plus" aria-label="Increase quantity" style="padding:4px 8px; font-size:18px; cursor:pointer;">+</button>
+          </div>
+        </label>
+        <div class="product-subtotal-row">
+          <span>Subtotal (base delivery incl.)</span>
+          <strong class="line-subtotal">To be confirmed</strong>
+        </div>
+        <button type="button" class="button button-outline full add-to-cart-btn">Add to cart</button>
+        <div class="added-status" hidden>Added to cart ✓</div>
+      </div>
+    `;
+
+    const variantSelect = card.querySelector(".variant-select");
+    const qtyInput = card.querySelector(".qty-input");
+    const minusBtn = card.querySelector(".qty-minus");
+    const plusBtn = card.querySelector(".qty-plus");
+    const subtotalEl = card.querySelector(".line-subtotal");
+    const addBtn = card.querySelector(".add-to-cart-btn");
+    const addedStatusEl = card.querySelector(".added-status");
+
+    const currentCart = loadCart();
+    const matchingCartItems = currentCart.filter((item) => item.product_id === p.id);
+
+    if (matchingCartItems.length > 0) {
+      const totalProductQty = matchingCartItems.reduce(
+        (sum, item) => sum + (Number(item.quantity) || 0),
+        0
+      );
+      const summaryLabels = matchingCartItems
+        .map((item) => `${item.variant} × ${item.quantity}`)
+        .join(", ");
+
+      card.classList.add("is-added", "cart-highlighted");
+      addBtn.classList.add("is-added");
+
+      if (addedStatusEl) {
+        addedStatusEl.hidden = false;
+        addedStatusEl.textContent = `In cart ✓ (${summaryLabels}, total ${totalProductQty})`;
+      }
+    }
+
+    function readSelectedAttributes() {
+      const chosen = {};
+      card.querySelectorAll(".attr-select").forEach((sel) => {
+        chosen[sel.dataset.attrKey] = sel.value;
+      });
+      return chosen;
+    }
+
+    function refreshSubtotal() {
+      let qty = parseInt(qtyInput.value, 10);
+      if (Number.isNaN(qty) || qty < minQty) {
+        qty = minQty;
+        qtyInput.value = String(minQty);
+      } else if (qty > 50) {
+        qty = 50;
+        qtyInput.value = "50";
+      }
+
+      const { subtotal } = computeUnitAndSubtotal(
+        p,
+        variantSelect.value,
+        readSelectedAttributes(),
+        qty
+      );
+      subtotalEl.textContent = subtotal == null ? "To be confirmed" : money(subtotal);
+    }
+
+    minusBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      const current = parseInt(qtyInput.value, 10) || minQty;
+      qtyInput.value = String(Math.max(minQty, current - 1));
+      refreshSubtotal();
+    });
+
+    plusBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      const current = parseInt(qtyInput.value, 10) || minQty;
+      qtyInput.value = String(Math.min(50, current + 1));
+      refreshSubtotal();
+    });
+
+    variantSelect.addEventListener("change", refreshSubtotal);
+    qtyInput.addEventListener("input", refreshSubtotal);
+    qtyInput.addEventListener("change", refreshSubtotal);
+
+    card.querySelectorAll(".attr-select").forEach((sel) => {
+      sel.addEventListener("change", refreshSubtotal);
+    });
+
+    addBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      refreshSubtotal();
+
+      const qty = Math.max(minQty, Math.min(50, parseInt(qtyInput.value, 10) || minQty));
+      const packVariant = variantSelect.value;
+      const selectedAttrs = readSelectedAttributes();
+      const { unitPrice } = computeUnitAndSubtotal(p, packVariant, selectedAttrs, qty);
+
+      const attrValues = Object.values(selectedAttrs).filter(Boolean);
+      const fullVariantLabel = attrValues.length
+        ? `${packVariant} (${attrValues.join(", ")})`
+        : packVariant;
+
+      const lineKey = `${p.id}::${fullVariantLabel}`;
+      const cart = loadCart();
+      const existing = cart.find((item) => item.lineKey === lineKey);
+
+      if (existing) {
+        existing.quantity = Math.min(50, (Number(existing.quantity) || 0) + qty);
+        existing.unit_price = unitPrice;
+        existing.min_qty = minQty;
+      } else {
+        cart.push({
+          lineKey,
+          product_id: p.id,
+          product_name: p.name,
+          variant: fullVariantLabel,
+          pack_variant: packVariant,
+          attributes: selectedAttrs,
+          quantity: qty,
+          min_qty: minQty,
+          unit_price: unitPrice,
+        });
+      }
+
+      saveCart(cart);
+      updateHeaderCart(cart);
+
+      card.classList.add("is-added", "cart-highlighted");
+      addBtn.classList.add("is-added");
+
+      if (addedStatusEl) {
+        addedStatusEl.hidden = false;
+        addedStatusEl.textContent = `Added to cart ✓ (${fullVariantLabel} × ${qty})`;
+      }
+
+      highlightCartAndShowOrderButton(`${p.name} — ${fullVariantLabel}`);
+    });
+
+    refreshSubtotal();
+    grid.appendChild(card);
+  });
+}
+
+function populateCategoryDropdown(productList) {
+  const selectEl = document.getElementById("category-filter");
+  if (!selectEl) return;
+
+  const previousValue = selectEl.value || "ALL";
+  const distinctCategories = [
+    ...new Set(
+      productList
+        .map((p) => (p.category || "").trim())
+        .filter(Boolean)
+    ),
+  ];
+
+  selectEl.innerHTML = `<option value="ALL">All Categories</option>`;
+  distinctCategories.forEach((cat) => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat;
+    selectEl.appendChild(opt);
+  });
+
+  if ([...selectEl.options].some((o) => o.value === previousValue)) {
+    selectEl.value = previousValue;
+  } else {
+    selectEl.value = "ALL";
+  }
+
+  if (!selectEl.dataset.boundChange) {
+    selectEl.addEventListener("change", () => {
+      const selectedCat = selectEl.value;
+      const filtered =
+        selectedCat === "ALL"
+          ? products
+          : products.filter((p) => (p.category || "").trim() === selectedCat);
+      renderProductGrid(filtered);
+    });
+    selectEl.dataset.boundChange = "true";
+  }
+}
+
 async function loadProducts() {
   const grid = document.getElementById("product-grid");
   if (!grid) return;
@@ -145,187 +398,16 @@ async function loadProducts() {
     if (!response.ok) throw new Error("Failed to load products");
 
     products = await response.json();
-    grid.innerHTML = "";
+    populateCategoryDropdown(products);
 
-    products.forEach((p) => {
-      const minQty = Math.max(1, Number(p.min_qty) || 1);
-      const variants = Array.isArray(p.variants) ? p.variants : [];
-      const attributes = Array.isArray(p.attributes) ? p.attributes : [];
+    const selectEl = document.getElementById("category-filter");
+    const selectedCat = selectEl ? selectEl.value : "ALL";
+    const initialList =
+      selectedCat && selectedCat !== "ALL"
+        ? products.filter((p) => (p.category || "").trim() === selectedCat)
+        : products;
 
-      const variantOptionsHtml = variants
-        .map((v) => {
-          const priceLabel = v.price == null ? "Price on request" : money(v.price);
-          return `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)} · ${escapeHtml(priceLabel)}</option>`;
-        })
-        .join("");
-
-      const attrFieldsHtml = attributes
-        .map((attr) => {
-          const optsHtml = (attr.options || [])
-            .map((opt) => {
-              const delta = Number(opt.price_delta) || 0;
-              const deltaSuffix = delta > 0 ? ` (+${money(delta)})` : "";
-              return `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.value)}${escapeHtml(deltaSuffix)}</option>`;
-            })
-            .join("");
-
-          return `
-            <label class="variant-label">
-              ${escapeHtml(attr.label)}
-              <select class="attr-select" data-attr-key="${escapeHtml(attr.key)}">${optsHtml}</select>
-            </label>
-          `;
-        })
-        .join("");
-
-      const cardNoteHtml = p.card_note
-        ? `<div class="card-meta-note">${escapeHtml(p.card_note)}</div>`
-        : "";
-
-      const card = document.createElement("article");
-      card.className = "product-card";
-      card.dataset.productId = p.id;
-      card.innerHTML = `
-        <div class="product-image">
-          <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy">
-        </div>
-        <div class="product-info">
-          <span class="category">${escapeHtml(p.category)} · Min qty: ${minQty}</span>
-          <h3>${escapeHtml(p.name)}</h3>
-          <p>${escapeHtml(p.description)}</p>
-          ${cardNoteHtml}
-          <label class="variant-label">
-            Pack / variant
-            <select class="variant-select">${variantOptionsHtml}</select>
-          </label>
-          ${attrFieldsHtml}
-          <label class="variant-label">
-            Quantity (min ${minQty})
-            <div class="quantity product-qty-control" style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-              <button type="button" class="qty-minus" aria-label="Decrease quantity" style="padding:4px 8px; font-size:18px; cursor:pointer;">−</button>
-              <input type="number" class="qty-input" min="${minQty}" max="50" value="${minQty}" inputmode="numeric" style="text-align:center;">
-              <button type="button" class="qty-plus" aria-label="Increase quantity" style="padding:4px 8px; font-size:18px; cursor:pointer;">+</button>
-            </div>
-          </label>
-          <div class="product-subtotal-row">
-            <span>Subtotal (base delivery incl.)</span>
-            <strong class="line-subtotal">To be confirmed</strong>
-          </div>
-          <button type="button" class="button button-outline full add-to-cart-btn">Add to cart</button>
-          <div class="added-status" hidden>Added to cart ✓</div>
-        </div>
-      `;
-
-      const variantSelect = card.querySelector(".variant-select");
-      const qtyInput = card.querySelector(".qty-input");
-      const minusBtn = card.querySelector(".qty-minus");
-      const plusBtn = card.querySelector(".qty-plus");
-      const subtotalEl = card.querySelector(".line-subtotal");
-      const addBtn = card.querySelector(".add-to-cart-btn");
-      const addedStatusEl = card.querySelector(".added-status");
-
-      function readSelectedAttributes() {
-        const chosen = {};
-        card.querySelectorAll(".attr-select").forEach((sel) => {
-          chosen[sel.dataset.attrKey] = sel.value;
-        });
-        return chosen;
-      }
-
-      function refreshSubtotal() {
-        let qty = parseInt(qtyInput.value, 10);
-        if (Number.isNaN(qty) || qty < minQty) {
-          qty = minQty;
-          qtyInput.value = String(minQty);
-        } else if (qty > 50) {
-          qty = 50;
-          qtyInput.value = "50";
-        }
-
-        const { subtotal } = computeUnitAndSubtotal(
-          p,
-          variantSelect.value,
-          readSelectedAttributes(),
-          qty
-        );
-        subtotalEl.textContent = subtotal == null ? "To be confirmed" : money(subtotal);
-      }
-
-      minusBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        const current = parseInt(qtyInput.value, 10) || minQty;
-        qtyInput.value = String(Math.max(minQty, current - 1));
-        refreshSubtotal();
-      });
-
-      plusBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        const current = parseInt(qtyInput.value, 10) || minQty;
-        qtyInput.value = String(Math.min(50, current + 1));
-        refreshSubtotal();
-      });
-
-      variantSelect.addEventListener("change", refreshSubtotal);
-      qtyInput.addEventListener("input", refreshSubtotal);
-      qtyInput.addEventListener("change", refreshSubtotal);
-
-      card.querySelectorAll(".attr-select").forEach((sel) => {
-        sel.addEventListener("change", refreshSubtotal);
-      });
-
-      addBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        refreshSubtotal();
-
-        const qty = Math.max(minQty, Math.min(50, parseInt(qtyInput.value, 10) || minQty));
-        const packVariant = variantSelect.value;
-        const selectedAttrs = readSelectedAttributes();
-        const { unitPrice } = computeUnitAndSubtotal(p, packVariant, selectedAttrs, qty);
-
-        const attrValues = Object.values(selectedAttrs).filter(Boolean);
-        const fullVariantLabel = attrValues.length
-          ? `${packVariant} (${attrValues.join(", ")})`
-          : packVariant;
-
-        const lineKey = `${p.id}::${fullVariantLabel}`;
-        const cart = loadCart();
-        const existing = cart.find((item) => item.lineKey === lineKey);
-
-        if (existing) {
-          existing.quantity = Math.min(50, (Number(existing.quantity) || 0) + qty);
-          existing.unit_price = unitPrice;
-          existing.min_qty = minQty;
-        } else {
-          cart.push({
-            lineKey,
-            product_id: p.id,
-            product_name: p.name,
-            variant: fullVariantLabel,
-            pack_variant: packVariant,
-            attributes: selectedAttrs,
-            quantity: qty,
-            min_qty: minQty,
-            unit_price: unitPrice,
-          });
-        }
-
-        saveCart(cart);
-        updateHeaderCart(cart);
-
-        card.classList.add("is-added", "cart-highlighted");
-        addBtn.classList.add("is-added");
-
-        if (addedStatusEl) {
-          addedStatusEl.hidden = false;
-          addedStatusEl.textContent = `Added to cart ✓ (${fullVariantLabel} × ${qty})`;
-        }
-
-        highlightCartAndShowOrderButton(`${p.name} — ${fullVariantLabel}`);
-      });
-
-      refreshSubtotal();
-      grid.appendChild(card);
-    });
+    renderProductGrid(initialList);
   } catch {
     grid.innerHTML = "Could not load products. Please refresh the page.";
   }
@@ -504,4 +586,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+});
+
+window.addEventListener("pageshow", () => {
+  updateHeaderCart();
+  if (document.getElementById("product-grid")) {
+    loadProducts();
+  }
 });

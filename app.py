@@ -11,7 +11,7 @@ from flask import Flask, jsonify, render_template, request, redirect, url_for, s
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import init_db, create_order, get_order, list_orders, update_order, delete_order
-from products import PRODUCTS, ORDER_CLAUSES
+from products import PRODUCTS, ORDER_CLAUSES, get_products
 
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__)
@@ -59,11 +59,13 @@ def cart_summary():
 
 @app.get("/api/products")
 def api_products():
+    items = get_products()
     return jsonify([
         {
             "id": p["id"],
             "name": p["name"],
             "description": p["description"],
+            "card_note": p.get("card_note", ""),
             "category": p["category"],
             "variants": p["variants"],
             "attributes": p.get("attributes", []),
@@ -71,7 +73,7 @@ def api_products():
             "image": p["image"],
             "price": p.get("price"),
         }
-        for p in PRODUCTS
+        for p in items
     ])
 
 

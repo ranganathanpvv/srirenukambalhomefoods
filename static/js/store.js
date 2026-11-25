@@ -594,3 +594,38 @@ window.addEventListener("pageshow", () => {
     loadProducts();
   }
 });
+
+// Mobile sandwich dropdown menu toggle
+(function () {
+  const toggleBtn = document.getElementById("mobile-menu-toggle");
+  const nav = document.getElementById("primary-nav");
+  if (!toggleBtn || !nav) return;
+
+  function setMenuOpen(isOpen) {
+    nav.classList.toggle("is-open", isOpen);
+    toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  }
+
+  toggleBtn.addEventListener("click", function (event) {
+    event.stopPropagation();
+    setMenuOpen(!nav.classList.contains("is-open"));
+  });
+
+  nav.querySelectorAll("a").forEach(function (link) {
+    link.addEventListener("click", function () {
+      setMenuOpen(false);
+    });
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!nav.contains(event.target) && !toggleBtn.contains(event.target)) {
+      setMenuOpen(false);
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      setMenuOpen(false);
+    }
+  });
+})();

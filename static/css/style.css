@@ -43,6 +43,47 @@ a {
     z-index: 10
 }
 
+.menu-toggle {
+    display: none;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink);
+    font: 600 12px/1 'DM Sans', sans-serif;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.menu-toggle:hover,
+.menu-toggle[aria-expanded="true"] {
+    background: #f2e9da;
+    border-color: var(--brown);
+}
+
+.menu-icon {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 14px;
+    height: 10px;
+}
+
+.menu-icon span {
+    display: block;
+    width: 100%;
+    height: 1.75px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.menu-label {
+    line-height: 1;
+}
+
 .brand {
     display: flex;
     align-items: center;
@@ -670,8 +711,42 @@ th {
 }
 
 @media(max-width:800px) {
+    .site-header {
+        gap: 8px;
+    }
+
+    .menu-toggle {
+        display: inline-flex;
+    }
+
+    .brand {
+        margin-right: auto;
+        gap: 8px;
+    }
+
     nav {
-        display: none
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 0;
+        background: var(--paper);
+        border-bottom: 1px solid var(--line);
+        box-shadow: 0 10px 24px rgba(48, 39, 31, 0.08);
+        z-index: 20;
+    }
+
+    nav.is-open {
+        display: flex;
+    }
+
+    nav a {
+        padding: 13px max(5vw, 18px);
+        font-size: 14px;
+        font-weight: 500;
+        border-top: 1px solid var(--line);
     }
 
     .hero {
@@ -715,11 +790,28 @@ th {
     }
 
     .site-header {
-        padding: 0 14px
+        padding: 0 12px;
+        gap: 6px;
+    }
+
+    .menu-toggle {
+        padding: 6px 9px;
+        gap: 5px;
+    }
+
+    .brand-mark {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
     }
 
     .brand strong {
         font-size: 15px
+    }
+
+    .brand small {
+        letter-spacing: 2px;
+        font-size: 8px;
     }
 
     .cart-link {

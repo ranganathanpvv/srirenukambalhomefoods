@@ -206,10 +206,15 @@ def _decode_val(cell: dict):
 def _query_db(sql: str, params: list | None = None) -> list[dict]:
     args = params or []
 
+    # if TURSO_URL and TURSO_TOKEN:
+    #     stmt = {"sql": sql}
+    #     if args:
+    #         stmt["positional_args"] = [_encode_arg(a) for a in args]
+    
     if TURSO_URL and TURSO_TOKEN:
         stmt = {"sql": sql}
         if args:
-            stmt["positional_args"] = [_encode_arg(a) for a in args]
+            stmt["args"] = [_encode_arg(a) for a in args]
 
         resp = requests.post(
             _turso_http_url(),
@@ -244,22 +249,44 @@ def _query_db(sql: str, params: list | None = None) -> list[dict]:
     conn.row_factory = sqlite3.Row
     try:
         cur = conn.execute(sql, args)
+        conn.commit()
         return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
 
 
+def _parse_json_list(raw_val) -> list:
+    if raw_val is None:
+        return []
+    if isinstance(raw_val, list):
+        return raw_val
+    try:
+        parsed = json.loads(raw_val)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        return []
+
+
 def _row_to_product(row: dict) -> dict:
+    variants = _parse_json_list(row.get("variants_json"))
+    attributes = _parse_json_list(row.get("attributes_json"))
+    variants_raw = row.get("variants_json")
+    attrs_raw = row.get("attributes_json")
+
     return {
         "id": row["id"],
         "name": row["name"],
-        "description": row["description"],
-        "card_note": row["card_note"],
-        "category": row["category"],
-        "image": row["image"],
-        "min_qty": int(row["min_qty"] or 1),
-        "variants": json.loads(row["variants_json"] or "[]"),
-        "attributes": json.loads(row["attributes_json"] or "[]"),
+        "description": row.get("description") or "",
+        "card_note": row.get("card_note") or "",
+        "category": row.get("category") or "",
+        "image": row.get("image") or "",
+        "min_qty": int(row.get("min_qty") or 1),
+        "is_active": int(row.get("is_active") if row.get("is_active") is not None else 1),
+        "sort_order": int(row.get("sort_order") or 0),
+        "variants": variants,
+        "attributes": attributes,
+        "variants_json_raw": variants_raw if isinstance(variants_raw, str) else json.dumps(variants),
+        "attributes_json_raw": attrs_raw if isinstance(attrs_raw, str) else json.dumps(attributes),
     }
 
 
@@ -278,3 +305,90 @@ def get_products(include_inactive: bool = False) -> list[dict]:
         pass
 
     return PRODUCTS
+
+
+def get_all_products_admin() -> list[dict]:
+    """Return all products from DB for admin management (including soft-deleted)."""
+    try:
+        rows = _query_db("SELECT * FROM products ORDER BY sort_order ASC, name ASC")
+        if rows:
+            return [_row_to_product(r) for r in rows]
+    except Exception:
+        pass
+
+    return [
+        {
+            **p,
+            "is_active": 1,
+            "sort_order": idx + 1,
+            "variants_json_raw": json.dumps(p.get("variants", [])),
+            "attributes_json_raw": json.dumps(p.get("attributes", [])),
+        }
+        for idx, p in enumerate(PRODUCTS)
+    ]
+
+
+def insert_product_admin(product_data: dict) -> None:
+    """Insert a new product row into the database."""
+    _query_db(
+        """
+        INSERT INTO products (
+            id, name, description, card_note, category, image, min_qty,
+            variants_json, attributes_json, is_active, sort_order, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """,
+        [
+            str(product_data["id"]),
+            str(product_data["name"]),
+            str(product_data.get("description") or ""),
+            str(product_data.get("card_note") or ""),
+            str(product_data["category"]),
+            str(product_data.get("image") or ""),
+            int(product_data.get("min_qty") or 1),
+            str(product_data.get("variants_json") or "[]"),
+            str(product_data.get("attributes_json") or "[]"),
+            1 if int(product_data.get("is_active", 1)) == 1 else 0,
+            int(product_data.get("sort_order") if product_data.get("sort_order") is not None else 99),
+        ],
+    )
+
+
+def update_product_admin(product_data: dict) -> None:
+    """Update an existing product row by id."""
+    _query_db(
+        """
+        UPDATE products
+        SET name = ?,
+            description = ?,
+            card_note = ?,
+            category = ?,
+            image = ?,
+            min_qty = ?,
+            variants_json = ?,
+            attributes_json = ?,
+            is_active = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        [
+            str(product_data["name"]),
+            str(product_data.get("description") or ""),
+            str(product_data.get("card_note") or ""),
+            str(product_data["category"]),
+            str(product_data.get("image") or ""),
+            int(product_data.get("min_qty") or 1),
+            str(product_data.get("variants_json") or "[]"),
+            str(product_data.get("attributes_json") or "[]"),
+            1 if int(product_data.get("is_active", 1)) == 1 else 0,
+            str(product_data["id"]),
+        ],
+    )
+
+
+def set_product_active_admin(product_id: str, is_active: int) -> None:
+    """Soft-delete (is_active=0) or restore (is_active=1) a product."""
+    _query_db(
+        "UPDATE products SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [1 if int(is_active) else 0, product_id],
+    )

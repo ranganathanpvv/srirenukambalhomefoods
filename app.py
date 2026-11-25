@@ -1,17 +1,27 @@
+
+import json
 import os
+import re
 import secrets
+
 from urllib.parse import quote
 from dotenv import load_dotenv
-
 load_dotenv()
 from functools import wraps
 from pathlib import Path
-
 from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from database import init_db, create_order, get_order, list_orders, update_order, delete_order
-from products import PRODUCTS, ORDER_CLAUSES, get_products
+from products import (
+    PRODUCTS,
+    ORDER_CLAUSES,
+    get_products,
+    get_all_products_admin,
+    insert_product_admin,
+    update_product_admin,
+    set_product_active_admin,
+)
+
 
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__)
@@ -128,10 +138,10 @@ def api_create_order():
         attr_has_unpriced = False
         chosen_attr_labels = []
 
-        for attr_def in product.get("attributes", []):
+        for attr_def in (product.get("attributes") or []):
             key = attr_def["key"]
             chosen_val = str(raw_attrs.get(key, "")).strip()
-            matched_opt = next((o for o in attr_def["options"] if o["value"] == chosen_val), None)
+            matched_opt = next((o for o in (attr_def.get("options") or []) if o["value"] == chosen_val), None)
             if not matched_opt:
                 return jsonify(error=f"Please select a valid {attr_def['label']} for {product['name']}."), 400
             chosen_attr_labels.append(chosen_val)
@@ -317,6 +327,132 @@ def admin_order_delete(order_id):
     delete_order(order_id)
     flash(f"Order {existing['order_number']} deleted.", "success")
     return redirect(url_for("admin_dashboard"))
+
+
+@app.get("/admin/products")
+@admin_required
+def admin_products():
+    products = get_all_products_admin()
+    edit_id = (request.args.get("edit") or "").strip()
+    editing_product = next((p for p in products if p["id"] == edit_id), None) if edit_id else None
+    return render_template(
+        "admin_products.html",
+        products=products,
+        editing_product=editing_product,
+        csrf_token=session.get("csrf_token", ""),
+    )
+
+
+@app.post("/admin/products/save")
+@admin_required
+def admin_product_save():
+    if request.form.get("csrf_token") != session.get("csrf_token"):
+        return "Invalid request token", 400
+
+    is_edit = request.form.get("is_edit") == "1"
+    pid = (request.form.get("id") or "").strip().lower()
+    name = (request.form.get("name") or "").strip()
+    category = (request.form.get("category") or "").strip()
+    description = (request.form.get("description") or "").strip()
+    card_note = (request.form.get("card_note") or "").strip()
+    image = (request.form.get("image") or "").strip()
+    variants_raw = (request.form.get("variants_json") or "[]").strip()
+    attrs_raw = (request.form.get("attributes_json") or "[]").strip()
+
+    try:
+        min_qty = int(request.form.get("min_qty", 1))
+    except (TypeError, ValueError):
+        min_qty = 1
+
+    try:
+        is_active = 1 if int(request.form.get("is_active", 1)) == 1 else 0
+    except (TypeError, ValueError):
+        is_active = 1
+
+    if not pid or not re.fullmatch(r"[a-z0-9-]+", pid):
+        flash("Product ID must contain only lowercase letters, numbers, and hyphens.", "error")
+        return redirect(url_for("admin_products"))
+
+    if not name or not category:
+        flash("Product name and category are required.", "error")
+        return redirect(url_for("admin_products", edit=pid if is_edit else None))
+
+    if min_qty < 1 or min_qty > 50:
+        min_qty = 1
+
+    try:
+        parsed_variants = json.loads(variants_raw)
+        if not isinstance(parsed_variants, list) or not parsed_variants:
+            raise ValueError("Variants must be a non-empty list.")
+        clean_variants = []
+        for v in parsed_variants:
+            v_name = str((v or {}).get("name", "")).strip()
+            v_price = (v or {}).get("price")
+            if not v_name:
+                continue
+            clean_variants.append({
+                "name": v_name,
+                "price": float(v_price) if v_price is not None and v_price != "" else None,
+            })
+        if not clean_variants:
+            raise ValueError("At least one valid variant name is required.")
+    except Exception as exc:
+        flash(f"Invalid variants JSON: {exc}", "error")
+        return redirect(url_for("admin_products", edit=pid if is_edit else None))
+
+    try:
+        parsed_attrs = json.loads(attrs_raw or "[]")
+        if not isinstance(parsed_attrs, list):
+            raise ValueError("Attributes must be a JSON list.")
+    except Exception as exc:
+        flash(f"Invalid attributes JSON: {exc}", "error")
+        return redirect(url_for("admin_products", edit=pid if is_edit else None))
+
+    payload = {
+        "id": pid,
+        "name": name,
+        "category": category,
+        "description": description,
+        "card_note": card_note,
+        "image": image,
+        "min_qty": min_qty,
+        "is_active": is_active,
+        "variants_json": json.dumps(clean_variants),
+        "attributes_json": json.dumps(parsed_attrs),
+    }
+
+    if is_edit:
+        update_product_admin(payload)
+        flash(f"Updated product '{name}'.", "success")
+    else:
+        insert_product_admin(payload)
+        flash(f"Created product '{name}'.", "success")
+
+    return redirect(url_for("admin_products"))
+
+
+@app.post("/admin/products/<product_id>/hide")
+@admin_required
+def admin_product_soft_delete(product_id):
+    if request.form.get("csrf_token") != session.get("csrf_token"):
+        return "Invalid request token", 400
+    set_product_active_admin(product_id, 0)
+    flash(f"Product '{product_id}' hidden from storefront (soft-deleted).", "success")
+    return redirect(url_for("admin_products"))
+
+
+@app.post("/admin/products/<product_id>/active")
+@admin_required
+def admin_product_set_active(product_id):
+    if request.form.get("csrf_token") != session.get("csrf_token"):
+        return "Invalid request token", 400
+    try:
+        active_val = 1 if int(request.form.get("is_active", 1)) == 1 else 0
+    except (TypeError, ValueError):
+        active_val = 1
+    set_product_active_admin(product_id, active_val)
+    flash(f"Product '{product_id}' status updated.", "success")
+    return redirect(url_for("admin_products"))
 
 
 @app.get("/health")

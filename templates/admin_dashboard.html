@@ -7,10 +7,13 @@
       <p class="eyebrow">ORDER MANAGEMENT</p>
       <h1>Orders dashboard</h1>
     </div>
-    <form method="post" action="{{ url_for('admin_logout') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button class="button button-outline">Log out</button>
-    </form>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <a class="button button-dark" href="{{ url_for('admin_products') }}">Manage products</a>
+      <form method="post" action="{{ url_for('admin_logout') }}" style="margin:0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="button button-outline">Log out</button>
+      </form>
+    </div>
   </div>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}

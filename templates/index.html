@@ -6,7 +6,8 @@
     <p class="eyebrow">HOMEMADE • TRADITIONAL • MADE WITH CARE</p>
     <h1>The traditional taste of <em>home.</em></h1>
     <p>Traditional spice powders, podis and pickles made in small batches for your family.</p>
-    <p class="heritage-note">Prepared in a traditional Brahmin vegetarian household, following time-honoured vegetarian home-cooking practices.</p>
+    <p class="heritage-note">Prepared in a traditional Brahmin vegetarian household, following time-honoured vegetarian
+      home-cooking practices.</p>
     <a class="button button-dark" href="#products">Explore our products</a>
   </div>
   <div class="hero-art">
@@ -18,16 +19,30 @@
 <section class="intro" id="about">
   <p class="eyebrow">WELCOME TO OUR KITCHEN</p>
   <h2>Simple ingredients. Familiar flavours.</h2>
-  <p>Renukambal Home Foods brings you everyday favourites inspired by traditional home cooking. Our food products are prepared in a traditional Brahmin vegetarian household, with care for familiar recipes and vegetarian cooking practices. Products are prepared on request or in small batches, subject to availability.</p>
+  <p>Renukambal Home Foods brings you everyday favourites inspired by traditional home cooking. Our food products are
+    prepared in a traditional Brahmin vegetarian household, with care for familiar recipes and vegetarian cooking
+    practices. Products are prepared on request or in small batches, subject to availability.</p>
 </section>
 
-<section class="products-section" id="products">
+<section class="products-section" id="categories">
   <div class="section-heading">
     <div>
       <p class="eyebrow">OUR COLLECTION</p>
       <h2>Made for your kitchen</h2>
+      <p>Select pack size, options, and quantity, then add to your cart.</p>
     </div>
-    <p>Select pack size, options, and quantity, then add to your cart.</p>
+    <div id="categories" class="categories-filter-bar">
+      <label for="category-filter" class="variant-label">
+        Category
+        <select id="category-filter" class="variant-select">
+          <option value="ALL">All Categories</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div id="product-grid" class="product-grid">
+    <!-- Rendered dynamically by store.js -->
   </div>
 
   <!-- Highlighted dynamically when a product is added to cart; does not auto-scroll/jump -->
@@ -37,7 +52,7 @@
   </div>
 
   <div id="product-grid" class="product-grid">
-    <div class="loading">Loading products…</div>
+    <div class="loading"></div>
   </div>
 
   <div class="order-clauses">

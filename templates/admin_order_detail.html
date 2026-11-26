@@ -7,9 +7,9 @@
   <h1>{{ order.order_number }}</h1>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-      <p class="alert {{ category }}">{{ message }}</p>
-    {% endfor %}
+  {% for category, message in messages %}
+  <p class="alert {{ category }}">{{ message }}</p>
+  {% endfor %}
   {% endwith %}
 
   <div class="detail-grid">
@@ -21,10 +21,12 @@
     <div class="detail-card">
       <h3>Order summary</h3>
       {% for i in order['items'] %}
-        <p>{{ i.product_name }} – {{ i.variant }} × {{ i.quantity }}{% if i.unit_price is not none %} (₹{{ '%.2f'|format(i.unit_price) }}){% endif %}</p>
+      <p>{{ i.product_name }} – {{ i.variant }} × {{ i.quantity }}{% if i.unit_price is not none %} (₹{{
+        '%.2f'|format(i.unit_price) }}){% endif %}</p>
       {% endfor %}
       <hr>
-      <strong>Total: {% if order.total is not none %}₹{{ '%.2f'|format(order.total) }}{% else %}To be confirmed{% endif %}</strong>
+      <strong>Total: {% if order.total is not none %}₹{{ '%.2f'|format(order.total) }}{% else %}To be confirmed{% endif
+        %}</strong>
     </div>
   </div>
 
@@ -34,7 +36,7 @@
     <label>Status
       <select name="status">
         {% for s in ['New','Confirmed','Preparing','Ready','Dispatched','Delivered','Cancelled'] %}
-          <option value="{{ s }}" {% if order.status==s %}selected{% endif %}>{{ s }}</option>
+        <option value="{{ s }}" {% if order.status==s %}selected{% endif %}>{{ s }}</option>
         {% endfor %}
       </select>
     </label>
@@ -44,10 +46,31 @@
     <label>Admin remarks
       <textarea name="remarks" rows="3">{{ order.admin_remarks or '' }}</textarea>
     </label>
+    <label>Payment Status
+      <select name="payment_status">
+        <option value="Pending WhatsApp Confirmation" {% if order.payment_status=='Pending WhatsApp Confirmation'
+          %}selected{% endif %}>Pending WhatsApp Confirmation</option>
+        <option value="Paid" {% if order.payment_status=='Paid' %}selected{% endif %}>Paid</option>
+        <option value="Failed" {% if order.payment_status=='Failed' %}selected{% endif %}>Failed</option>
+        <option value="COD / Pay on Delivery" {% if order.payment_status=='COD / Pay on Delivery' %}selected{% endif %}>
+          COD / Pay on Delivery</option>
+      </select>
+    </label>
+    <label>Courier Tracking URL
+      <input type="url" name="tracking_url" value="{{ order.courier_tracking_url or '' }}"
+        placeholder="https://stcourier.com/track/shipment">
+    </label>
+
+    <label>Courier Tracking ID
+      <input type="text" name="tracking_id" value="{{ order.courier_tracking_id or '' }}"
+        placeholder="e.g. 64403782413">
+    </label>
     <button class="button button-dark" type="submit">Save changes</button>
   </form>
 
-  <form class="detail-card update-form" style="margin-top:18px;" method="post" action="{{ url_for('admin_order_delete', order_id=order.id) }}" onsubmit="return confirm('Permanently delete order {{ order.order_number }}? This cannot be undone.');">
+  <form class="detail-card update-form" style="margin-top:18px;" method="post"
+    action="{{ url_for('admin_order_delete', order_id=order.id) }}"
+    onsubmit="return confirm('Permanently delete order {{ order.order_number }}? This cannot be undone.');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <h3>Delete order</h3>
     <p class="muted">Permanently remove this order from the database.</p>

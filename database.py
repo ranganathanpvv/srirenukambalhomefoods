@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 import requests
 from dotenv import load_dotenv
@@ -173,6 +174,9 @@ def init_db():
             notes TEXT,
             total REAL,
             status TEXT NOT NULL DEFAULT 'New',
+            payment_status TEXT NOT NULL DEFAULT 'Pending WhatsApp Confirmation',
+            courier_tracking_url TEXT,
+            courier_tracking_id TEXT,
             tentative_delivery_date TEXT,
             admin_remarks TEXT,
             created_at TEXT NOT NULL,
@@ -260,13 +264,14 @@ def list_orders(status="", search=""):
         return [_order_dict(row, items_by_order.get(row["id"], [])) for row in rows]
 
 
-def update_order(order_id, status, delivery_date, remarks):
+def update_order(order_id, status, delivery_date, remarks, payment_status="Pending WhatsApp Confirmation", tracking_url="", tracking_id=""):
     now = datetime.now().astimezone().isoformat(timespec="seconds")
     with get_db() as conn:
         conn.execute(
-            """UPDATE orders SET status=?, tentative_delivery_date=?, admin_remarks=?, updated_at=?
+            """UPDATE orders SET status=?, tentative_delivery_date=?, admin_remarks=?, 
+               payment_status=?, courier_tracking_url=?, courier_tracking_id=?, updated_at=?
             WHERE id=?""",
-            (status, delivery_date, remarks, now, order_id)
+            (status, delivery_date, remarks, payment_status, tracking_url, tracking_id, now, order_id)
         )
 
 
@@ -274,3 +279,45 @@ def delete_order(order_id):
     with get_db() as conn:
         cur = conn.execute("DELETE FROM orders WHERE id=?", (order_id,))
         return cur.rowcount > 0
+
+def get_orders_by_phone(phone_number):
+    """
+    Fetches all orders and items matching the last 10 digits of the phone number.
+    Returns orders ordered by newest first.
+    """
+    digits_only = re.sub(r'\D', '', phone_number.strip())
+    
+    if len(digits_only) >= 10:
+        last_10_digits = digits_only[-10:]
+    else:
+        last_10_digits = digits_only
+
+    if not last_10_digits or len(last_10_digits) < 10:
+        return []
+
+    sql = """
+        SELECT * FROM orders 
+        WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), '(', '') LIKE ?
+        ORDER BY id DESC
+    """
+    search_pattern = f"%{last_10_digits}"
+    with get_db() as conn:
+        cursor = conn.execute(sql, [search_pattern])
+        rows = cursor.fetchall() if hasattr(cursor, 'fetchall') else list(cursor)
+        
+        if not rows:
+            return []
+
+        order_ids = [r["id"] for r in rows]
+        placeholders = ",".join("?" for _ in order_ids)
+        items_cursor = conn.execute(
+            f"SELECT * FROM order_items WHERE order_id IN ({placeholders}) ORDER BY id",
+            order_ids
+        )
+        all_items = items_cursor.fetchall() if hasattr(items_cursor, 'fetchall') else list(items_cursor)
+
+        items_by_order = {}
+        for item in all_items:
+            items_by_order.setdefault(item["order_id"], []).append(item)
+
+        return [_order_dict(row, items_by_order.get(row["id"], [])) for row in rows]

@@ -11,7 +11,7 @@ from functools import wraps
 from pathlib import Path
 from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash, generate_password_hash
-from database import init_db, create_order, get_order, list_orders, update_order, delete_order
+from database import init_db, create_order, get_order, list_orders, update_order, delete_order, get_orders_by_phone
 from products import (
     PRODUCTS,
     ORDER_CLAUSES,
@@ -284,10 +284,23 @@ def admin_order_update(order_id):
     status = request.form.get("status", "")
     delivery_date = request.form.get("delivery_date", "").strip() or None
     remarks = request.form.get("remarks", "").strip()
+    payment_status = request.form.get("payment_status", "Pending WhatsApp Confirmation").strip()
+    tracking_url = request.form.get("tracking_url", "").strip()
+    tracking_id = request.form.get("tracking_id", "").strip()
+
     if status not in VALID_ORDER_STATUSES:
         flash("Invalid order status.", "error")
         return redirect(url_for("admin_order_detail", order_id=order_id))
-    update_order(order_id, status=status, delivery_date=delivery_date, remarks=remarks)
+
+    update_order(
+        order_id,
+        status=status,
+        delivery_date=delivery_date,
+        remarks=remarks,
+        payment_status=payment_status,
+        tracking_url=tracking_url,
+        tracking_id=tracking_id
+    )
     flash("Order updated.", "success")
     return redirect(url_for("admin_order_detail", order_id=order_id))
 
@@ -310,6 +323,9 @@ def admin_order_quick_status(order_id):
         status=status,
         delivery_date=existing.get("tentative_delivery_date"),
         remarks=existing.get("admin_remarks") or "",
+        payment_status=existing.get("payment_status") or "Pending WhatsApp Confirmation",
+        tracking_url=existing.get("courier_tracking_url") or "",
+        tracking_id=existing.get("courier_tracking_id") or "",
     )
     flash(f"Order {existing['order_number']} status updated to {status}.", "success")
     return redirect(url_for("admin_dashboard"))
@@ -458,6 +474,34 @@ def admin_product_set_active(product_id):
 @app.get("/health")
 def health():
     return jsonify(status="ok", app="Renukambal Home Foods")
+
+@app.route('/track-order', methods=['GET', 'POST'])
+def track_order():
+    orders = None
+    searched = False
+    error_message = None
+    searched_phone = ""
+    
+    if request.method == 'POST':
+        searched = True
+        searched_phone = request.form.get('phone', '').strip()
+        
+        # Quick validation for minimum 10 digits
+        digits_only = re.sub(r'\D', '', searched_phone)
+        if len(digits_only) < 10:
+            error_message = "Please enter a valid 10-digit mobile number."
+        else:
+            orders = get_orders_by_phone(searched_phone)
+            if not orders:
+                error_message = f"No orders found for mobile number ending in {digits_only[-10:]}."
+
+    return render_template(
+        'track_order.html', 
+        orders=orders, 
+        searched=searched, 
+        error_message=error_message,
+        searched_phone=searched_phone
+    )
 
 
 if __name__ == "__main__":

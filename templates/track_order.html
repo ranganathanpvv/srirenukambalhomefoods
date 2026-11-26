@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Track Order | Sri Renukambal Home Foods{% endblock %}
+
+{% block content %}
+<section class="admin-page" style="max-width: 650px; margin: 0 auto;">
+  <div class="admin-heading">
+    <div>
+      <p class="eyebrow">ORDER TRACKING</p>
+      <h1>Track your orders</h1>
+    </div>
+  </div>
+
+  <form class="detail-card update-form" method="post" action="{{ url_for('track_order') }}"
+    style="margin-bottom: 24px;">
+    <label><span style="font-weight: bold;">Mobile number</span> <span style="font-style: italic; font-size: x-small; font-weight: 200;"> (same number used for order booking)</span>
+      <input type="tel" name="phone" value="{{ searched_phone }}" placeholder="e.g. 9876543210" required>
+    </label>
+    <button class="button button-dark full" type="submit">View My Orders</button>
+  </form>
+
+  {% if error_message %}
+  <p class="alert error">{{ error_message }}</p>
+  {% endif %}
+
+  {% if searched and orders %}
+  <h2 style="margin-bottom: 16px;">Your Orders ({{ orders|length }})</h2>
+  {% for o in orders %}
+  <div class="detail-card" style="margin-bottom: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin: 0;">{{ o.order_number }}</h3>
+      <span class="status">{{ o.status }}</span>
+    </div>
+    <p style="margin: 4px 0;"><strong>Name:</strong> {{ o.customer_name }}</p>
+    <p style="margin: 4px 0;"><strong>Order Date:</strong> {{ o.created_at[:16].replace('T',' ') }}</p>
+    <p style="margin: 4px 0;"><strong>Total:</strong> {% if o.total is not none %}₹{{ '%.2f'|format(o.total) }}{% else
+      %}To be confirmed{% endif %}</p>
+    <p style="margin: 4px 0;"><strong>Address:</strong> {{ o.address }}</p>
+    <!-- Payment Status Display -->
+    <p style="margin: 4px 0;">
+      <strong>Payment Status:</strong>
+      <span class="badge {% if o.payment_status == 'Paid' %}bg-success{% else %}bg-warning{% endif %}">
+        {{ o.payment_status or 'Pending WhatsApp Confirmation' }}
+      </span>
+    </p>
+    <!-- Courier Tracking Link -->
+    {% if o.courier_tracking_url or o.courier_tracking_id %}
+    <div style="margin: 12px 0; padding: 12px; background: #eef9f2; border-radius: 6px; border: 1px solid #b7e4c7;">
+      <p style="margin: 0 0 6px 0; color: #2e5a44;"><strong>Courier Tracking</strong></p>
+
+      {% if o.courier_tracking_id %}
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex-direction: column">
+        <button type="button" class="button button-outline" style="padding: 4px 10px; font-size: 0.85rem;"
+          onclick="navigator.clipboard.writeText('{{ o.courier_tracking_id }}'); this.innerText='Copied!'; setTimeout(()=>this.innerText='Copy Code for tracking', 2000);">
+          <span style="font-style: oblique;">Copy Code for tracking ({{ o.courier_tracking_id }})</span>
+        </button>
+        <a href="{{ o.courier_tracking_url or 'https://stcourier.com/track/shipment' }}" target="_blank"
+          rel="noopener noreferrer" class="button button-dark"
+          style="padding: 4px 10px; font-size: 0.85rem; text-decoration: none;">
+          Open Courier Portal →
+        </a>
+      </div>
+      {% else %}
+      <p style="margin: 0;">Delivery status will be updated in WhatsApp</p>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if o.tentative_delivery_date %}
+    <p style="margin: 4px 0; color: #2e5a44;"><strong>Tentative Delivery:</strong> {{ o.tentative_delivery_date }}</p>
+    {% endif %}
+    {% if o.admin_remarks %}
+    <p style="margin: 4px 0; color: #666; font-style: italic;"><strong>Remarks:</strong> {{ o.admin_remarks }}</p>
+    {% endif %}
+
+    <hr style="margin: 12px 0;">
+    <p style="margin-bottom: 6px;"><strong>Items:</strong></p>
+    <ul style="margin: 0; padding-left: 18px;">
+      {% for i in o['items'] %}
+      <li>{{ i.product_name }} – {{ i.variant }} × {{ i.quantity }}{% if i.unit_price is not none %} (₹{{
+        '%.2f'|format(i.unit_price) }}){% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

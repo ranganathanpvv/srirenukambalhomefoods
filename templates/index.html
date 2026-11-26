@@ -1,29 +1,155 @@
 {% extends "base.html" %}
-{% block title %}Sri Renukambal Home Foods | Homemade Goodness{% endblock %}
+{% block title %}Sri Renukambal Home Foods | Authentic Flavours{% endblock %}
 {% block content %}
-<section class="hero">
-  <div class="hero-copy">
-    <p class="eyebrow">HOMEMADE • TRADITIONAL • MADE WITH CARE</p>
-    <h1>The traditional taste of <em>home.</em></h1>
-    <p>Traditional spice powders, podis and pickles made in small batches for your family.</p>
-    <p class="heritage-note">Prepared in a traditional Brahmin vegetarian household, following time-honoured vegetarian
-      home-cooking practices.</p>
-    <a class="button button-dark" href="#products">Explore our products</a>
-  </div>
-  <div class="hero-art">
-    <img src="/static/images/hero-food.jpg" alt="Traditional South Indian vegetarian homemade meal">
-    <span class="hero-note">Made with love<br>for your home</span>
+
+<!-- Top Header Intro Section -->
+<section class="intro-hero" style="text-align: center; padding: 50px 20px 35px; background: var(--cream);">
+  <p class="eyebrow" style="color: var(--green); letter-spacing: 2.3px; font-weight: 700;">SPICE SYMPHONY</p>
+  <h1 style="font-family: 'Playfair Display', serif; font-size: 38px; color: var(--ink); margin: 10px 0;">
+    A symphony of Authentic South Indian flavours
+  </h1>
+  <p style="color: var(--muted); max-width: 600px; margin: 0 auto 24px; line-height: 1.7;">
+    Savor the essence of traditional home cooking — prepared in a Brahmin vegetarian household with time-honored recipes
+    and pure ingredients.
+  </p>
+  <div style="display: flex; gap: 12px; justify-content: center;">
+    <a href="#products" class="button button-green">Explore Collection</a>
+    <a href="#about" class="button button-outline">Our Story</a>
   </div>
 </section>
 
-<section class="intro" id="about">
-  <p class="eyebrow">WELCOME TO OUR KITCHEN</p>
-  <h2>Simple ingredients. Familiar flavours.</h2>
-  <p>Renukambal Home Foods brings you everyday favourites inspired by traditional home cooking. Our food products are
-    prepared in a traditional Brahmin vegetarian household, with care for familiar recipes and vegetarian cooking
-    practices. Products are prepared on request or in small batches, subject to availability.</p>
+<!-- Green Arch Hero & Overlapping Feature Showcase -->
+<section class="kitchen-specials-section">
+
+  <!-- Top Spices Banner -->
+  <div class="specials-banner">
+    <img class="central-bg-img" src="/static/images/spices.jpg" alt="Traditional South Indian Meal">
+    <div class="banner-green-overlay"></div>
+
+    <div class="central-content">
+      <p class="eyebrow" style="color: var(--gold); letter-spacing: 2px; font-weight: 700;">HANDCRAFTED IN SMALL BATCHES
+      </p>
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; color: var(--cream); margin: 6px 0 8px;">
+        Our Kitchen Specials
+      </h2>
+      <p style="color: var(--green-light); font-size: 14px; margin: 0;">Freshly prepared on request • Preservative free
+      </p>
+    </div>
+  </div>
+
+  <!-- 3 Overlapping Circular Dish Spotlight Cards -->
+  <div class="special-cards-grid">
+
+    <!-- Special 1: Idli Podi -->
+    <div class="spotlight-card">
+      <div class="dish-circle">
+        <img src="/static/images/idli-podi.jpg" alt="Idli Podi" onerror="this.src='/static/images/hero-food.jpg'">
+      </div>
+      <h3>Idli Podi</h3>
+      <p class="dish-desc">Homemade podi, available with or without garlic.</p>
+      <div class="card-footer">
+        <span class="dish-price">₹193 (250g)</span>
+        <a href="#products" class="order-link">Order now →</a>
+      </div>
+    </div>
+
+    <!-- Special 2: Sambar Podi -->
+    <div class="spotlight-card">
+      <div class="dish-circle">
+        <img src="/static/images/sambar-powder.jpg" alt="Sambar Podi" onerror="this.src='/static/images/hero-food.jpg'">
+      </div>
+      <h3>Sambar Podi</h3>
+      <p class="dish-desc">Traditional homemade aromatic sambar powder.</p>
+      <div class="card-footer">
+        <span class="dish-price">₹213 (250g)</span>
+        <a href="#products" class="order-link">Order now →</a>
+      </div>
+    </div>
+
+    <!-- Special 3: Rasam Podi -->
+    <div class="spotlight-card">
+      <div class="dish-circle">
+        <img src="/static/images/rasam-powder.jpg" alt="Rasam Podi" onerror="this.src='/static/images/hero-food.jpg'">
+      </div>
+      <h3>Rasam Podi</h3>
+      <p class="dish-desc">Aromatic homemade spice blend for authentic rasam.</p>
+      <div class="card-footer">
+        <span class="dish-price">₹234 (250g)</span>
+        <a href="#products" class="order-link">Order now →</a>
+      </div>
+    </div>
+
+  </div>
 </section>
 
+<!-- About Section (Seamless Flow: Left Sharp Image -> Right Blurred Gradient & Dark Theme Panel) -->
+<section class="about-section" id="about">
+  <div class="about-container">
+    <!-- Full-bleed background image -->
+    <img class="about-flow-bg" src="/static/images/about.jpg" alt="South Indian Spices" loading="lazy">
+
+    <!-- Gradient overlay: Transparent on left -> Green -> Deep Green Dark on right -->
+    <div class="about-flow-overlay"></div>
+
+    <div class="about-grid">
+      <!-- Left Column: Centered Glass Badge Overlay over Visible Image -->
+      <div class="about-left-col">
+        <div class="about-center-caption">
+          <strong>Authentic Spices &amp; Blends</strong>
+          <small>Hand-ground with care &amp; tradition</small>
+          <div class="about-badge">
+            <span>100% TRADITIONAL</span>
+            <small>Brahmin Home Recipe</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Text & Pillars over Blurred Dark Green Gradient -->
+      <div class="about-right-col">
+
+
+        <p class="eyebrow" style="color: var(--gold); letter-spacing: 2px; font-weight: 700;">OUR STORY &amp; HERITAGE
+        </p>
+        <h2>From Our Kitchen Table to Your Home</h2>
+        <p class="about-lead">
+          Sri Renukambal Home Foods began with a very humble home-based dream — rooted in warmth, family tradition, and
+          a deep love for honest food.
+        </p>
+
+        <div class="about-pillars">
+          <div class="pillar-item">
+            <div class="pillar-icon">🌿</div>
+            <div>
+              <h4>Home-Prepared with Care</h4>
+              <p>Every powder and podi is handcrafted in small, fresh batches inside a traditional Brahmin vegetarian
+                kitchen, following time-tested family recipes.</p>
+            </div>
+          </div>
+
+          <div class="pillar-item">
+            <div class="pillar-icon">✨</div>
+            <div>
+              <h4>Pure Quality &amp; Healthy</h4>
+              <p>We source clean, premium pulses and whole spices without any added preservatives, colors, or artificial
+                flavor enhancers.</p>
+            </div>
+          </div>
+
+          <div class="pillar-item">
+            <div class="pillar-icon">📦</div>
+            <div>
+              <h4>Delivered Fresh to Your Home</h4>
+              <p>From our humble beginnings to your dining space, we pack and ship every order with personal attention
+                so the rich aroma of home reaches your doorstep.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Full Storefront Catalog Section -->
 <section class="products-section" id="products">
   <div class="section-heading">
     <div>
@@ -42,17 +168,12 @@
   </div>
 
   <div id="product-grid" class="product-grid">
-    <!-- Rendered dynamically by store.js -->
+    <div class="loading"></div>
   </div>
 
-  <!-- Highlighted dynamically when a product is added to cart; does not auto-scroll/jump -->
   <div id="cart-feedback-bar" class="cart-feedback-bar" hidden aria-live="polite">
     <span id="cart-added-highlight" class="cart-added-highlight"></span>
     <a id="place-order-cta" class="button button-green" href="{{ url_for('cart_summary') }}">Place Order</a>
-  </div>
-
-  <div id="product-grid" class="product-grid">
-    <div class="loading"></div>
   </div>
 
   <div class="order-clauses">
@@ -65,4 +186,3 @@
   </div>
 </section>
 {% endblock %}
-```[cite: 6]
